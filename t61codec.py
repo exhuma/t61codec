@@ -11,7 +11,7 @@ import codecs
 from typing import Tuple
 
 
-__version__ = '1.0.0.post1'
+__version__ = '1.0.1'
 
 
 class Codec(codecs.Codec):
