@@ -1,0 +1,11 @@
+[build-system]
+requires = ["flit_core >=2,<3"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.metadata]
+module = "t61codec"
+author = "Michel Albert"
+author-email = "michel@albert.lu"
+home-page = "https://github.com/exhuma/t61codec"
+classifiers = ["License :: OSI Approved :: MIT License"]
+
