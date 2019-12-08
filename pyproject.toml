@@ -8,4 +8,4 @@ author = "Michel Albert"
 author-email = "michel@albert.lu"
 home-page = "https://github.com/exhuma/t61codec"
 classifiers = ["License :: OSI Approved :: MIT License"]
-
+description-file = "README.rst"

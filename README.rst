@@ -1,0 +1,37 @@
+Python Codec for ITU T.61 Strings
+=================================
+
+For information about the codec see https://en.wikipedia.org/wiki/ITU_T.61
+
+
+Installation
+------------
+
+Installation follows the standard Python procedure:
+
+::
+
+    pip install t61codec
+
+
+The package uses Semantic Versioning 2.0 (https://semver.org/spec/v2.0.0.html).
+
+
+Usage
+-----
+
+The codec can be registered into Python's codec registry. A helper method has
+been provided::
+
+    import t61codec
+    t61codec.register()
+
+Please see the notes on `codecs.register
+<https://docs.python.org/3/library/codecs.html#codecs.register>`_!
+
+After registering, the codec is available as either ``'t61'`` or ``'t.61'``::
+
+    >>> b'Hello T.61: \xe0'.decode('t.61')
+    'Hello T.61: Ω'
+    >>> 'Hello T.61: Ω'.encode('t.61')
+    b'Hello T.61: \xe0'
