@@ -9,6 +9,9 @@ repository = "https://github.com/exhuma/t61codec"
 classifiers = ["License :: OSI Approved :: MIT License"]
 readme = "README.rst"
 
+[tool.black]
+line-length = 80
+
 [tool.poetry.dependencies]
 python = "^3.6"
 
