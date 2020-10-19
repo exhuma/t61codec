@@ -25,7 +25,7 @@ class Codec(codecs.Codec):
     """
 
     def encode(self, input: str, errors: str = "strict") -> Tuple[bytes, int]:
-        return codecs.charmap_encode(input, errors, encoding_table)  # type: ignore
+        return codecs.charmap_encode(input, errors, ENCODING_TABLE)  # type: ignore
 
     def decode(self, input: str, errors: str = "strict") -> Tuple[str, int]:
         return codecs.charmap_decode(input, errors, DECODING_TABLE)  # type: ignore
@@ -38,7 +38,7 @@ class IncrementalEncoder(codecs.IncrementalEncoder):
 
     def encode(self, input: str, final: bool = False) -> bytes:
         return codecs.charmap_encode(  # type: ignore
-            input, self.errors, encoding_table
+            input, self.errors, ENCODING_TABLE
         )[0]
 
 
@@ -340,7 +340,7 @@ DECODING_TABLE = (
 )
 
 # Encoding table
-encoding_table = codecs.charmap_build(DECODING_TABLE)  # type: ignore
+ENCODING_TABLE = codecs.charmap_build(DECODING_TABLE)  # type: ignore
 
 
 def search_function(encoding: str) -> codecs.CodecInfo:
