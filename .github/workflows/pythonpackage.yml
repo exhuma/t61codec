@@ -49,7 +49,8 @@ jobs:
     - name: Build distribution
       if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
       run: |
-        pip install poetry
+        python -m pip install --upgrade pip
+        pip install poetry wheel
         poetry build
     - name: Publish package
       if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
