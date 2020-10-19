@@ -9,8 +9,13 @@ See https://en.wikipedia.org/wiki/ITU_T.61
 import codecs
 from typing import Tuple
 
+try:
+    import importlib.metadata as imlib
+except ImportError:
+    import importlib_metadata as imlib
 
-__version__ = "1.0.1"
+
+__version__ = imlib.Distribution.from_name("t61codec").version
 
 
 class Codec(codecs.Codec):
