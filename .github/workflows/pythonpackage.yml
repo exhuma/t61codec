@@ -1,0 +1,54 @@
+name: Python package
+
+on: [push]
+
+jobs:
+  test:
+
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 5
+      matrix:
+        python-version: [3.5, 3.6, 3.7, 3.8, 3.9]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry install
+    - name: Lint with pylint
+      run: |
+        pip install pylint
+        pylint --reports=y t61codec.py
+    - name: Check Code Style
+      run: |
+        pip install black
+        black --check t61codec.py
+
+  publish:
+
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        python-version: [3.8]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Build distribution
+      if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+      run: |
+        pip install poetry
+        poetry build
+    - name: Publish package
+      if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+      uses: pypa/gh-action-pypi-publish@e777b333
+      with:
+        user: __token__
+        password: ${{ secrets.pypi_token }}
