@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "t61codec"
-version = "1.0.1"
+version = "2.0.0"
 description = "Python Codec for ITU T.61 Strings"
 authors = ["Michel Albert <michel@albert.lu>"]
 license = "MIT"
