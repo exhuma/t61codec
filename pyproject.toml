@@ -1,11 +1,19 @@
-[build-system]
-requires = ["flit_core >=2,<3"]
-build-backend = "flit_core.buildapi"
-
-[tool.flit.metadata]
-module = "t61codec"
-author = "Michel Albert"
-author-email = "michel@albert.lu"
-home-page = "https://github.com/exhuma/t61codec"
+[tool.poetry]
+name = "t61codec"
+version = "1.0.1"
+description = "Python Codec for ITU T.61 Strings"
+authors = ["Michel Albert <michel@albert.lu>"]
+license = "MIT"
+homepage = "https://github.com/exhuma/t61codec"
+repository = "https://github.com/exhuma/t61codec"
 classifiers = ["License :: OSI Approved :: MIT License"]
-description-file = "README.rst"
+readme = "README.rst"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
