@@ -12,7 +12,7 @@ from typing import Tuple
 try:
     import importlib.metadata as imlib
 except ImportError:
-    import importlib_metadata as imlib
+    import importlib_metadata as imlib  # type: ignore
 
 
 __version__ = imlib.Distribution.from_name("t61codec").version
@@ -24,13 +24,11 @@ class Codec(codecs.Codec):
     :py:func:`codecs.charmap_encode` and :py:func:`codecs.charmap_decode`
     """
 
-    def encode(self, input, errors="strict"):
-        # type: (str, str) -> Tuple[bytes, int]
+    def encode(self, input: str, errors: str = "strict") -> Tuple[bytes, int]:
         return codecs.charmap_encode(input, errors, encoding_table)  # type: ignore
 
-    def decode(self, input, errors="strict"):
-        # type: (bytes, str) -> Tuple[str, int]
-        return codecs.charmap_decode(input, errors, decoding_table)  # type: ignore
+    def decode(self, input: str, errors: str = "strict") -> Tuple[str, int]:
+        return codecs.charmap_decode(input, errors, DECODING_TABLE)  # type: ignore
 
 
 class IncrementalEncoder(codecs.IncrementalEncoder):
@@ -38,8 +36,7 @@ class IncrementalEncoder(codecs.IncrementalEncoder):
     See :py:class:`codecs.IncrementalEncoder`
     """
 
-    def encode(self, input, final=False):
-        # type: (str, bool) -> bytes
+    def encode(self, input: str, final: bool = False) -> bytes:
         return codecs.charmap_encode(  # type: ignore
             input, self.errors, encoding_table
         )[0]
@@ -50,10 +47,9 @@ class IncrementalDecoder(codecs.IncrementalDecoder):
     See :py:class:`codecs.IncrementalDecoder`
     """
 
-    def decode(self, input, final=False):
-        # type: (bytes, bool) -> str
+    def decode(self, input: bytes, final: bool = False) -> str:
         return codecs.charmap_decode(  # type: ignore
-            input, self.errors, decoding_table
+            input, self.errors, DECODING_TABLE
         )[0]
 
 
@@ -69,8 +65,7 @@ class StreamReader(Codec, codecs.StreamReader):
     """
 
 
-def getregentry():
-    # type: () -> codecs.CodecInfo
+def getregentry() -> codecs.CodecInfo:
     """
     Creates a :py:class:`codecs.CodecInfo` instance for use in the registry
     """
@@ -85,7 +80,7 @@ def getregentry():
     )
 
 
-decoding_table = (
+DECODING_TABLE = (
     "\x00"  # 0x00 -> NULL
     "\x01"  # 0x01 -> START OF HEADING
     "\x02"  # 0x02 -> START OF TEXT
@@ -345,11 +340,10 @@ decoding_table = (
 )
 
 # Encoding table
-encoding_table = codecs.charmap_build(decoding_table)  # type: ignore
+encoding_table = codecs.charmap_build(DECODING_TABLE)  # type: ignore
 
 
-def search_function(encoding):
-    # type: (str) -> codecs.CodecInfo
+def search_function(encoding: str) -> codecs.CodecInfo:
     """
     A search function which can be used with :py:func:`codecs.register`.
 
@@ -360,8 +354,7 @@ def search_function(encoding):
     return codecs.lookup(encoding)  # type: ignore
 
 
-def register():
-    # type: () -> None
+def register() -> None:
     """
     Convenience function which registers a new default Python search function
 
