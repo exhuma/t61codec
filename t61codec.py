@@ -357,7 +357,7 @@ def search_function(encoding):
     """
     if encoding.lower() in ("t61", "t.61"):
         return getregentry()
-    return codecs.search_function(encoding)  # type: ignore
+    return codecs.lookup(encoding)  # type: ignore
 
 
 def register():
