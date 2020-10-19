@@ -1,3 +1,9 @@
+v2.0.0
+======
+
+Dropped Support for Python 2 (min version is now 3.6)
+
+
 v1.0.1
 ======
 
