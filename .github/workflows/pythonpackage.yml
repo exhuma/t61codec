@@ -30,6 +30,11 @@ jobs:
       run: |
         pip install black
         black --check t61codec.py
+    - name: Run unit-tests
+      run: |
+        poetry run pytest --doctest-modules test_t61codec.py t61codec.py
+
+
 
   publish:
 
