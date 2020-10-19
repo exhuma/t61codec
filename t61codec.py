@@ -361,8 +361,8 @@ def register() -> None:
     Example:
 
     >>> import t61codec
-    >>> t61codec.register
-    >>> b'Hello T.61: \xe0'.decode('t.61')
+    >>> t61codec.register()
+    >>> b'Hello T.61: \\xe0'.decode('t.61')
     'Hello T.61: Ω'
     """
     codecs.register(search_function)
