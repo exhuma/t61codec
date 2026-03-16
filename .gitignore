@@ -1,2 +1,10 @@
 *.pyc
-dist
+__pycache__/
+*.egg-info/
+dist/
+build/
+.venv/
+.uv/
+.pytest_cache/
+.ruff_cache/
+docs/_build/
