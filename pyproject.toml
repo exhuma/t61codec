@@ -11,6 +11,7 @@ classifiers = ["License :: OSI Approved :: MIT License"]
 [project.urls]
 Homepage = "https://github.com/exhuma/t61codec"
 Repository = "https://github.com/exhuma/t61codec"
+Documentation = "https://t61codec.readthedocs.io"
 
 [build-system]
 requires = ["hatchling"]
