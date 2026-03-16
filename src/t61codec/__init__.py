@@ -4,18 +4,10 @@ Python Character Mapping Codec for T61
 See https://en.wikipedia.org/wiki/ITU_T.61
 """
 
-# pylint: disable=invalid-name, no-member, redefined-builtin
-
 import codecs
-from typing import Tuple
+from importlib.metadata import version
 
-try:
-    import importlib.metadata as imlib
-except ImportError:
-    import importlib_metadata as imlib  # type: ignore
-
-
-__version__ = imlib.Distribution.from_name("t61codec").version
+__version__ = version("t61codec")
 
 
 class Codec(codecs.Codec):
@@ -24,11 +16,11 @@ class Codec(codecs.Codec):
     :py:func:`codecs.charmap_encode` and :py:func:`codecs.charmap_decode`
     """
 
-    def encode(self, input: str, errors: str = "strict") -> Tuple[bytes, int]:
-        return codecs.charmap_encode(input, errors, ENCODING_TABLE)  # type: ignore
+    def encode(self, input: str, errors: str = "strict") -> tuple[bytes, int]:
+        return codecs.charmap_encode(input, errors, ENCODING_TABLE)  # type: ignore[return-value]
 
-    def decode(self, input: str, errors: str = "strict") -> Tuple[str, int]:
-        return codecs.charmap_decode(input, errors, DECODING_TABLE)  # type: ignore
+    def decode(self, input: str, errors: str = "strict") -> tuple[str, int]:
+        return codecs.charmap_decode(input, errors, DECODING_TABLE)  # type: ignore[return-value]
 
 
 class IncrementalEncoder(codecs.IncrementalEncoder):
@@ -37,7 +29,7 @@ class IncrementalEncoder(codecs.IncrementalEncoder):
     """
 
     def encode(self, input: str, final: bool = False) -> bytes:
-        return codecs.charmap_encode(  # type: ignore
+        return codecs.charmap_encode(  # type: ignore[return-value]
             input, self.errors, ENCODING_TABLE
         )[0]
 
@@ -48,7 +40,7 @@ class IncrementalDecoder(codecs.IncrementalDecoder):
     """
 
     def decode(self, input: bytes, final: bool = False) -> str:
-        return codecs.charmap_decode(  # type: ignore
+        return codecs.charmap_decode(  # type: ignore[return-value]
             input, self.errors, DECODING_TABLE
         )[0]
 
@@ -340,7 +332,7 @@ DECODING_TABLE = (
 )
 
 # Encoding table
-ENCODING_TABLE = codecs.charmap_build(DECODING_TABLE)  # type: ignore
+ENCODING_TABLE = codecs.charmap_build(DECODING_TABLE)  # type: ignore[attr-defined]
 
 
 def search_function(encoding: str) -> codecs.CodecInfo:
@@ -351,7 +343,7 @@ def search_function(encoding: str) -> codecs.CodecInfo:
     """
     if encoding.lower() in ("t61", "t.61"):
         return getregentry()
-    return codecs.lookup(encoding)  # type: ignore
+    return codecs.lookup(encoding)  # type: ignore[return-value]
 
 
 def register() -> None:
@@ -363,6 +355,6 @@ def register() -> None:
     >>> import t61codec
     >>> t61codec.register()
     >>> b'Hello T.61: \\xe0'.decode('t.61')
-    'Hello T.61: Ω'
+    'Hello T.61: Ω'
     """
     codecs.register(search_function)
