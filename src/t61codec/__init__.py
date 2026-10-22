@@ -335,15 +335,18 @@ DECODING_TABLE = (
 ENCODING_TABLE = codecs.charmap_build(DECODING_TABLE)  # type: ignore[attr-defined]
 
 
-def search_function(encoding: str) -> codecs.CodecInfo:
+def search_function(encoding: str) -> codecs.CodecInfo | None:
     """
     A search function which can be used with :py:func:`codecs.register`.
+
+    Returns a CodecInfo for t61/t.61 encodings, or None for unknown
+    encodings to allow other search functions to handle them.
 
     As a convenience, there is also :func:`~.register` in this module.
     """
     if encoding.lower() in ("t61", "t.61"):
         return getregentry()
-    return codecs.lookup(encoding)  # type: ignore[return-value]
+    return None
 
 
 def register() -> None:

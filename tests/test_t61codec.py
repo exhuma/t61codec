@@ -14,11 +14,16 @@ t61codec.register()
 class TestSearchFunction:
     @pytest.mark.parametrize(
         "lookup_name, expected_name",
-        [("t61", "t.61"), ("t.61", "t.61"), ("utf8", "utf-8")],
+        [("t61", "t.61"), ("t.61", "t.61")],
     )
     def test_search(self, lookup_name: str, expected_name: str) -> None:
         result = t61codec.search_function(lookup_name)
         assert result.name == expected_name
+
+    def test_search_unknown_returns_none(self) -> None:
+        """search_function should return None for unknown encodings."""
+        result = t61codec.search_function("utf8")
+        assert result is None
 
 
 class TestEncodeDecode:
@@ -105,3 +110,32 @@ class TestVersion:
 
     def test_version_is_not_empty(self) -> None:
         assert t61codec.__version__ != ""
+
+
+class TestUnknownCodecErrorHandling:
+    """Regression tests for unknown codec error handling."""
+
+    def test_lookup_unknown_raises_lookup_error(self) -> None:
+        """Ensure codecs.lookup raises LookupError for unknown encodings.
+
+        This verifies the fix for the RecursionError that occurred when
+        search_function returned codecs.lookup() for unknown encodings.
+        """
+        with pytest.raises(LookupError):
+            codecs.lookup("no-such-codec-xyz")
+
+    def test_decode_unknown_raises_lookup_error(self) -> None:
+        """Ensure bytes.decode raises LookupError for unknown encodings.
+
+        This verifies the fix for the RecursionError that occurred when
+        search_function returned codecs.lookup() for unknown encodings.
+        """
+        with pytest.raises(LookupError):
+            b"x".decode("no-such-codec-xyz")
+
+    def test_normal_encodings_still_work(self) -> None:
+        """Ensure normal encodings like utf-8 still work after registration."""
+        # UTF-8 should work through standard codec search functions
+        assert b"hello".decode("utf-8") == "hello"
+        # Verify encoding works with a non-ASCII character
+        assert "café".encode("utf-8") == b"caf\xc3\xa9"  # noqa: UP012
