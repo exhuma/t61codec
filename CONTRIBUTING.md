@@ -69,6 +69,15 @@ detects breakage caused by new Python releases.
 raised when cutting a release; a CI warning signals when it is due. Update the
 `Programming Language :: Python :: 3.x` classifiers at the same time.
 
+## Dependency updates
+
+The package has no runtime dependencies. Development tools are pinned in
+`uv.lock` and `.pre-commit-config.yaml`, and GitHub Actions are pinned by tag,
+so nothing changes unless a maintainer updates it on purpose. There are no
+automated version-update PRs: the monthly scheduled CI run is the signal.
+When it fails because of an outdated tool or action, update it then
+(`uv lock --upgrade`, `uv run pre-commit autoupdate`, or bump the action).
+
 ## Release procedure
 
 1. Bump `version` in `pyproject.toml`, update `CHANGES.rst`, and update the
