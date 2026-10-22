@@ -18,5 +18,6 @@ extensions = [
 templates_path = ["_templates"]
 exclude_patterns = ["_build"]
 
+html_baseurl = "https://exhuma.github.io/t61codec/"
 html_theme = "furo"
 html_static_path = ["_static"]

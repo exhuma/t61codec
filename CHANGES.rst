@@ -1,3 +1,9 @@
+Unreleased
+==========
+
+* Documentation moved from Read the Docs to GitHub Pages:
+  https://exhuma.github.io/t61codec/
+
 v3.0.0
 ======
 

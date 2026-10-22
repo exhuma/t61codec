@@ -13,14 +13,16 @@ Python Codec for ITU T.61 Strings
    :target: https://github.com/exhuma/t61codec/actions/workflows/pythonpackage.yml
    :alt: CI status
 
-.. image:: https://readthedocs.org/projects/t61codec/badge/?version=latest
-   :target: https://t61codec.readthedocs.io
-   :alt: Documentation status
+.. image:: https://github.com/exhuma/t61codec/actions/workflows/docs.yml/badge.svg
+   :target: https://exhuma.github.io/t61codec/
+   :alt: Documentation
 
 A Python codec for ITU-T Rec. T.61 (11/1988), the 8-bit Teletex code,
 implemented to the letter of the recommendation: accented letters are
 composed from their diacritic prefix, only the combinations of Figure B-1
 are accepted, and undefined bytes and control functions are errors.
+
+Documentation: https://exhuma.github.io/t61codec/
 
 For background see https://en.wikipedia.org/wiki/ITU_T.61 and
 https://www.itu.int/rec/T-REC-T.61-198811-S/en

@@ -29,7 +29,7 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/exhuma/t61codec"
 Repository = "https://github.com/exhuma/t61codec"
-Documentation = "https://t61codec.readthedocs.io"
+Documentation = "https://exhuma.github.io/t61codec/"
 Changelog = "https://github.com/exhuma/t61codec/blob/master/CHANGES.rst"
 Issues = "https://github.com/exhuma/t61codec/issues"
 

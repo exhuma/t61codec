@@ -78,6 +78,12 @@ automated version-update PRs: the monthly scheduled CI run is the signal.
 When it fails because of an outdated tool or action, update it then
 (`uv lock --upgrade`, `uv run pre-commit autoupdate`, or bump the action).
 
+## Documentation
+
+The Sphinx docs are built with `-W` on every push and pull request (CI), and
+published to GitHub Pages (https://exhuma.github.io/t61codec/) by
+`.github/workflows/docs.yml` on every push to `master`.
+
 ## Release procedure
 
 1. Bump `version` in `pyproject.toml`, update `CHANGES.rst`, and update the
