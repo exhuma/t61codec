@@ -102,7 +102,12 @@ def test_error_handler_position_out_of_bounds() -> None:
     """
     Ensure an out-of-range resume position from a handler is rejected.
     """
-    codecs.register_error("t61test.bad", lambda error: ("", len(error.object) + 5))
+
+    def handler(error: UnicodeError) -> tuple[str, int]:
+        assert isinstance(error, UnicodeDecodeError)
+        return "", len(error.object) + 5
+
+    codecs.register_error("t61test.bad", handler)
 
     with pytest.raises(IndexError):
         b"\xff".decode("t.61", "t61test.bad")

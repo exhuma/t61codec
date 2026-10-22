@@ -3,6 +3,8 @@ Tests for codec registration and package metadata.
 """
 
 import codecs
+import importlib.metadata
+import importlib.util
 
 import pytest
 
@@ -79,3 +81,23 @@ def test_version_is_non_empty_string() -> None:
     """
     assert isinstance(t61codec.__version__, str)
     assert t61codec.__version__ != ""
+
+
+def test_version_falls_back_when_not_installed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Ensure a missing distribution (vendored copy) yields a placeholder version.
+    """
+
+    def missing(name: str) -> str:
+        raise importlib.metadata.PackageNotFoundError(name)
+
+    monkeypatch.setattr(importlib.metadata, "version", missing)
+    spec = importlib.util.spec_from_file_location("t61codec_fresh", t61codec.__file__)
+    assert spec is not None
+    assert spec.loader is not None
+    fresh = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fresh)
+
+    assert fresh.__version__ == "0+unknown"

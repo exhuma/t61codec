@@ -27,10 +27,16 @@ dev = [
     "sphinx>=8.0",
     "furo>=2024.1.29",
     "sphinx-copybutton>=0.5",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
 
 [tool.ruff]
 line-length = 88

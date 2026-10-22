@@ -7,6 +7,7 @@ The public codec classes in :mod:`t61codec` are thin wrappers around
 
 import codecs
 import unicodedata
+from typing import TYPE_CHECKING, cast
 
 from t61codec._tables import (
     COMBINING_LOW_LINE,
@@ -21,6 +22,9 @@ from t61codec._tables import (
     UNDERLINABLE,
     UNDERLINE,
 )
+
+if TYPE_CHECKING:
+    from typing_extensions import Buffer
 
 NAME = "t.61"
 
@@ -112,10 +116,13 @@ def _decode_error(data: bytes, start: int, reason: str, errors: str) -> tuple[st
     """
     exc = UnicodeDecodeError(NAME, data, start, start + 1, reason)
     replacement, resume = codecs.lookup_error(errors)(exc)
-    return replacement, _resume_position(resume, len(data))
+    # decode-error handlers return str; typeshed's union covers encode too
+    return cast("str", replacement), _resume_position(resume, len(data))
 
 
-def decode(data: bytes, errors: str = "strict", final: bool = True) -> tuple[str, int]:
+def decode(
+    data: "Buffer", errors: str = "strict", final: bool = True
+) -> tuple[str, int]:
     """
     Decode T.61 bytes.
 

@@ -50,11 +50,18 @@ See https://www.itu.int/rec/T-REC-T.61-198811-S/en
 """
 
 import codecs
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
+from typing import TYPE_CHECKING
 
 from t61codec import _codec
 
-__version__ = version("t61codec")
+if TYPE_CHECKING:
+    from typing_extensions import Buffer
+
+try:
+    __version__ = version("t61codec")
+except PackageNotFoundError:  # not installed, e.g. a vendored copy
+    __version__ = "0+unknown"
 
 
 class Codec(codecs.Codec):
@@ -72,7 +79,7 @@ class Codec(codecs.Codec):
         """
         return _codec.encode(input, errors)
 
-    def decode(self, input: bytes, errors: str = "strict") -> tuple[str, int]:
+    def decode(self, input: "Buffer", errors: str = "strict") -> tuple[str, int]:
         """
         Decode *input* completely; a trailing prefix byte is an error.
 
@@ -114,7 +121,9 @@ class IncrementalDecoder(codecs.BufferedIncrementalDecoder):
     call. With ``final=True`` it is an error.
     """
 
-    def _buffer_decode(self, input: bytes, errors: str, final: bool) -> tuple[str, int]:
+    def _buffer_decode(
+        self, input: "Buffer", errors: str, final: bool
+    ) -> tuple[str, int]:
         return _codec.decode(input, errors, final)
 
 
@@ -139,8 +148,10 @@ class StreamReader(Codec, codecs.StreamReader):
     encoding="t.61")``) always reports it.
     """
 
+    bytebuffer: bytes  # typeshed leaves the attribute's type undetermined
+
     def decode(
-        self, input: bytes, errors: str = "strict", final: bool = False
+        self, input: "Buffer", errors: str = "strict", final: bool = False
     ) -> tuple[str, int]:
         """
         Decode *input*, leaving an incomplete trailing sequence unread.
@@ -186,7 +197,7 @@ def getregentry() -> codecs.CodecInfo:
 
 def search_function(encoding: str) -> codecs.CodecInfo | None:
     """
-    A search function which can be used with :py:func:`codecs.register`.
+    Look up the codec; usable with :py:func:`codecs.register`.
 
     Returns a CodecInfo for t61/t.61 encodings, or None for unknown
     encodings to allow other search functions to handle them.
@@ -199,14 +210,14 @@ def search_function(encoding: str) -> codecs.CodecInfo | None:
 
 
 def register() -> None:
-    """
-    Convenience function which registers a new default Python search function
+    r"""
+    Register the T.61 search function with Python's codec registry.
 
     Example:
 
     >>> import t61codec
     >>> t61codec.register()
-    >>> b'Hello T.61: \\xe0 Caf\\xc2e'.decode('t.61')
+    >>> b'Hello T.61: \xe0 Caf\xc2e'.decode('t.61')
     'Hello T.61: Ω Café'
     """
     codecs.register(search_function)
