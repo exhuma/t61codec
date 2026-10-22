@@ -34,6 +34,12 @@ Feature requests are declined unless a change in Python itself requires one.
 uv run pytest
 ```
 
+The golden T.61 reference data lives in `tests/data/t61_golden.tsv`, one
+row per mapping, hand-transcribed from ITU-T T.61 (11/1988) and cited
+per row. It must never be generated from the codec. To review it, open
+the file (or `column -t -s$'\t'` it) and check each row against the cited
+table or figure; `tests/golden.py` is only a strict loader.
+
 ## Code style
 
 This project uses [ruff](https://docs.astral.sh/ruff/) for linting and
