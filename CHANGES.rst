@@ -68,7 +68,7 @@ Fixes
 Packaging
 ---------
 
-* Requires Python 3.10 or newer (2.0.0 required 3.6).
+* Requires Python 3.11 or newer (2.0.0 required 3.6).
 * The package is typed: it ships ``py.typed`` and passes ``mypy --strict``.
 * PEP 639 license metadata. ``Development Status :: 6 - Mature``: the project
   is in maintenance mode.
