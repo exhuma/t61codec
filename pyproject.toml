@@ -1,20 +1,40 @@
 [project]
 name = "t61codec"
-version = "2.0.0"
+version = "3.0.0"
 description = "Python Codec for ITU T.61 Strings"
 authors = [{ name = "Michel Albert", email = "michel@albert.lu" }]
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.rst"
-requires-python = ">=3.10"
-classifiers = ["License :: OSI Approved :: MIT License"]
+requires-python = ">=3.11"
+keywords = ["t61", "t.61", "teletex", "codec", "encoding", "itu", "x500", "ldap", "asn1", "T61String"]
+classifiers = [
+    "Development Status :: 6 - Mature",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Communications",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing",
+    "Typing :: Typed",
+]
 
 [project.urls]
 Homepage = "https://github.com/exhuma/t61codec"
 Repository = "https://github.com/exhuma/t61codec"
 Documentation = "https://t61codec.readthedocs.io"
+Changelog = "https://github.com/exhuma/t61codec/blob/master/CHANGES.rst"
+Issues = "https://github.com/exhuma/t61codec/issues"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
@@ -27,10 +47,16 @@ dev = [
     "sphinx>=8.0",
     "furo>=2024.1.29",
     "sphinx-copybutton>=0.5",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
 
 [tool.ruff]
 line-length = 88

@@ -1,65 +1,188 @@
 """
-Python Character Mapping Codec for T61
+Python codec for ITU-T Rec. T.61 (11/1988), the 8-bit basic Teletex code.
 
-See https://en.wikipedia.org/wiki/ITU_T.61
+The codec follows the 1988 edition of T.61 to the letter:
+
+* **Graphic characters** are the primary set (Table 1/T.61) and the
+  supplementary set (Table 2/T.61). 0xE0 decodes to U+03A9 and 0xE2 to
+  U+0110; on encode, U+2126 and U+00D0 are accepted as aliases. The
+  receive-only bytes 0x23 and 0x24 decode to ``#`` and ``¤`` but are
+  never produced: the encoder uses 0xA6 and 0xA8.
+* **Diacritics** (0xC1-0xCF) are prefixes. A diacritic plus a base
+  letter decodes to the precomposed character, but only for the 155
+  combinations of Figure B-1/T.61. A diacritic plus SPACE decodes to the
+  spacing accent (for example ``C2 20`` gives U+00B4). 0xC9, the umlaut
+  of the 1980 edition, is a decode-only alias of 0xC8.
+* **Non-spacing underline** (0xCC) may precede any graphic character,
+  including an accented letter or SPACE, with PLD/PLU allowed in
+  between. It decodes to the base character followed by U+0332
+  COMBINING LOW LINE; intervening PLD/PLU are emitted before the base.
+* **Control functions**: only BS, LF, FF, CR, SUB, PLD, PLU and CSI are
+  accepted, by identity. SUB is accepted on decode only. CSI decodes to
+  U+009B; the parameter and final bytes of a control sequence are
+  ordinary primary-set bytes and are decoded as such (T.61 defines no
+  further obligation for a character codec). Code extension (ESC, SS2,
+  SS3, LS0, LS1, RLF) is not supported.
+* **Encoding** normalises each character cluster to NFC, then emits the
+  single byte or the diacritic sequence (underline first). The output is
+  canonical: one byte string per NFC text. The incremental encoder and
+  the stream writer encode each chunk on its own, so a character and its
+  combining marks must not be split across chunks.
+
+Everything else is an error, reported through the usual error handlers.
+Every decode error spans one byte and decoding resumes right after it.
+An encode error spans the cluster (base character plus combining marks)
+in the original, non-normalised input (``replace`` gives one ``?`` per
+code point). ``backslashreplace`` cannot work on encode because T.61 has
+no backslash; it raises the original error with an explanatory reason.
+
+**Differences from glibc** (``iconv -f T.61``): glibc passes all C0/C1
+controls and 0x7F through, rejects 0x23/0x24/0xC9, decodes 0xE0/0xE2 to
+U+2126/U+00D0, rejects ``C2 67`` (ǵ), ``C1/C3/C4 20`` (spacing grave,
+circumflex and tilde) and the non-spacing underline 0xCC, and accepts
+``CB 67`` (ģ), which Figure B-1 does not list.
+
+**Real-world note:** OpenSSL treats T61String as Latin-1, so
+TeletexString data found in X.509 certificates is often Latin-1 rather
+than T.61, and this codec may reject or alter it.
+
+See https://www.itu.int/rec/T-REC-T.61-198811-S/en
 """
 
 import codecs
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
+from typing import TYPE_CHECKING
 
-__version__ = version("t61codec")
+from t61codec import _codec
+
+if TYPE_CHECKING:
+    from typing_extensions import Buffer
+
+try:
+    __version__ = version("t61codec")
+except PackageNotFoundError:  # not installed, e.g. a vendored copy
+    __version__ = "0+unknown"
 
 
 class Codec(codecs.Codec):
     """
-    Main implementation for the T.61 codec, based on
-    :py:func:`codecs.charmap_encode` and :py:func:`codecs.charmap_decode`
+    Stateless T.61 encoder and decoder.
     """
 
     def encode(self, input: str, errors: str = "strict") -> tuple[bytes, int]:
-        return codecs.charmap_encode(input, errors, ENCODING_TABLE)  # type: ignore[return-value]
+        """
+        Encode *input* completely.
 
-    def decode(self, input: str, errors: str = "strict") -> tuple[str, int]:
-        return codecs.charmap_decode(input, errors, DECODING_TABLE)  # type: ignore[return-value]
+        :param input: Text to encode.
+        :param errors: Name of a registered error handler.
+        :returns: The encoded bytes and the number of characters consumed.
+        """
+        return _codec.encode(input, errors)
+
+    def decode(self, input: "Buffer", errors: str = "strict") -> tuple[str, int]:
+        """
+        Decode *input* completely; a trailing prefix byte is an error.
+
+        :param input: Bytes to decode.
+        :param errors: Name of a registered error handler.
+        :returns: The decoded text and the number of bytes consumed.
+        """
+        return _codec.decode(input, errors, final=True)
 
 
 class IncrementalEncoder(codecs.IncrementalEncoder):
     """
-    See :py:class:`codecs.IncrementalEncoder`
+    Incremental T.61 encoder.
+
+    Each chunk is encoded on its own and nothing is held back, because
+    :class:`io.TextIOWrapper` never calls ``encode(..., final=True)``:
+    a held-back character would be lost when a file is closed. A chunk
+    that starts with a combining mark therefore fails like any other
+    combining mark without a base. Keep each character and its combining
+    marks in the same chunk.
     """
 
     def encode(self, input: str, final: bool = False) -> bytes:
-        return codecs.charmap_encode(  # type: ignore[return-value]
-            input, self.errors, ENCODING_TABLE
-        )[0]
+        """
+        Encode one chunk of text.
+
+        :param input: Next chunk of text.
+        :param final: Ignored; the encoder keeps no state.
+        :returns: The encoded bytes.
+        """
+        return _codec.encode(input, self.errors)[0]
 
 
-class IncrementalDecoder(codecs.IncrementalDecoder):
+class IncrementalDecoder(codecs.BufferedIncrementalDecoder):
     """
-    See :py:class:`codecs.IncrementalDecoder`
+    Incremental T.61 decoder.
+
+    A trailing diacritic or underline prefix is buffered until the next
+    call. With ``final=True`` it is an error.
     """
 
-    def decode(self, input: bytes, final: bool = False) -> str:
-        return codecs.charmap_decode(  # type: ignore[return-value]
-            input, self.errors, DECODING_TABLE
-        )[0]
+    def _buffer_decode(
+        self, input: "Buffer", errors: str, final: bool
+    ) -> tuple[str, int]:
+        return _codec.decode(input, errors, final)
 
 
 class StreamWriter(Codec, codecs.StreamWriter):
     """
-    See :py:class:`codecs.StreamWriter`
+    T.61 stream writer.
+
+    Each :meth:`write` is encoded on its own, as with
+    :class:`IncrementalEncoder`: a character and its combining marks must
+    be written in the same call.
     """
 
 
 class StreamReader(Codec, codecs.StreamReader):
     """
-    See :py:class:`codecs.StreamReader`
+    T.61 stream reader.
+
+    Prefix bytes at the end of one read are kept until the next read.
+    :meth:`read` without a size reports a truncated prefix at the end of
+    the stream as an error; :meth:`readline` cannot detect it and leaves
+    it in the buffer. :class:`io.TextIOWrapper` (``open(...,
+    encoding="t.61")``) always reports it.
     """
+
+    bytebuffer: bytes  # typeshed leaves the attribute's type undetermined
+
+    def decode(
+        self, input: "Buffer", errors: str = "strict", final: bool = False
+    ) -> tuple[str, int]:
+        """
+        Decode *input*, leaving an incomplete trailing sequence unread.
+
+        :param input: Bytes to decode.
+        :param errors: Name of a registered error handler.
+        :param final: If true, a trailing prefix byte is an error.
+        :returns: The decoded text and the number of bytes consumed.
+        """
+        return _codec.decode(input, errors, final)
+
+    def read(self, size: int = -1, chars: int = -1, firstline: bool = False) -> str:
+        """
+        Read and decode, as :meth:`codecs.StreamReader.read`.
+
+        :param size: Approximate number of bytes to read; -1 for all.
+        :param chars: Number of characters to return; -1 for all.
+        :param firstline: Return only the first line if decoding fails.
+        :returns: The decoded text.
+        """
+        text = super().read(size, chars, firstline)
+        if size < 0 and chars < 0 and self.bytebuffer:
+            tail, _ = self.decode(self.bytebuffer, self.errors, final=True)
+            self.bytebuffer = b""
+            text += tail
+        return text
 
 
 def getregentry() -> codecs.CodecInfo:
     """
-    Creates a :py:class:`codecs.CodecInfo` instance for use in the registry
+    Create a :py:class:`codecs.CodecInfo` instance for the registry.
     """
     return codecs.CodecInfo(
         name="t.61",
@@ -72,289 +195,29 @@ def getregentry() -> codecs.CodecInfo:
     )
 
 
-DECODING_TABLE = (
-    "\x00"  # 0x00 -> NULL
-    "\x01"  # 0x01 -> START OF HEADING
-    "\x02"  # 0x02 -> START OF TEXT
-    "\x03"  # 0x03 -> END OF TEXT
-    "\x04"  # 0x04 -> END OF TRANSMISSION
-    "\x05"  # 0x05 -> ENQUIRY
-    "\x06"  # 0x06 -> ACKNOWLEDGE
-    "\x07"  # 0x07 -> BELL
-    "\x08"  # 0x08 -> BACKSPACE
-    "\t"  # 0x09 -> HORIZONTAL TABULATION
-    "\n"  # 0x0A -> LINE FEED
-    "\x0b"  # 0x0B -> VERTICAL TABULATION
-    "\x0c"  # 0x0C -> FORM FEED
-    "\r"  # 0x0D -> CARRIAGE RETURN
-    "\x0e"  # 0x0E -> SHIFT OUT
-    "\x0f"  # 0x0F -> SHIFT IN
-    "\x10"  # 0x10 -> DATA LINK ESCAPE
-    "\x11"  # 0x11 -> DEVICE CONTROL ONE
-    "\x12"  # 0x12 -> DEVICE CONTROL TWO
-    "\x13"  # 0x13 -> DEVICE CONTROL THREE
-    "\x14"  # 0x14 -> DEVICE CONTROL FOUR
-    "\x15"  # 0x15 -> NEGATIVE ACKNOWLEDGE
-    "\x16"  # 0x16 -> SYNCHRONOUS IDLE
-    "\x17"  # 0x17 -> END OF TRANSMISSION BLOCK
-    "\x18"  # 0x18 -> CANCEL
-    "\x19"  # 0x19 -> END OF MEDIUM
-    "\x1a"  # 0x1A -> SUBSTITUTE
-    "\x1b"  # 0x1B -> ESCAPE
-    "\x1c"  # 0x1C -> FILE SEPARATOR
-    "\x1d"  # 0x1D -> GROUP SEPARATOR
-    "\x1e"  # 0x1E -> RECORD SEPARATOR
-    "\x1f"  # 0x1F -> UNIT SEPARATOR
-    " "  # 0x20 -> SPACE
-    "!"  # 0x21 -> EXCLAMATION MARK
-    '"'  # 0x22 -> QUOTATION MARK
-    "\ufffe"  # 0x23 -> *unmapped*
-    "\ufffe"  # 0x24 -> *unmapped*
-    "%"  # 0x25 -> PERCENT SIGN
-    "&"  # 0x26 -> AMPERSAND
-    "'"  # 0x27 -> APOSTROPHE
-    "("  # 0x28 -> LEFT PARENTHESIS
-    ")"  # 0x29 -> RIGHT PARENTHESIS
-    "*"  # 0x2A -> ASTERISK
-    "+"  # 0x2B -> PLUS SIGN
-    ","  # 0x2C -> COMMA
-    "-"  # 0x2D -> HYPHEN-MINUS
-    "."  # 0x2E -> FULL STOP
-    "/"  # 0x2F -> SOLIDUS
-    "0"  # 0x30 -> DIGIT ZERO
-    "1"  # 0x31 -> DIGIT ONE
-    "2"  # 0x32 -> DIGIT TWO
-    "3"  # 0x33 -> DIGIT THREE
-    "4"  # 0x34 -> DIGIT FOUR
-    "5"  # 0x35 -> DIGIT FIVE
-    "6"  # 0x36 -> DIGIT SIX
-    "7"  # 0x37 -> DIGIT SEVEN
-    "8"  # 0x38 -> DIGIT EIGHT
-    "9"  # 0x39 -> DIGIT NINE
-    ":"  # 0x3A -> COLON
-    ";"  # 0x3B -> SEMICOLON
-    "<"  # 0x3C -> LESS-THAN SIGN
-    "="  # 0x3D -> EQUALS SIGN
-    ">"  # 0x3E -> GREATER-THAN SIGN
-    "?"  # 0x3F -> QUESTION MARK
-    "@"  # 0x40 -> COMMERCIAL AT
-    "A"  # 0x41 -> LATIN CAPITAL LETTER A
-    "B"  # 0x42 -> LATIN CAPITAL LETTER B
-    "C"  # 0x43 -> LATIN CAPITAL LETTER C
-    "D"  # 0x44 -> LATIN CAPITAL LETTER D
-    "E"  # 0x45 -> LATIN CAPITAL LETTER E
-    "F"  # 0x46 -> LATIN CAPITAL LETTER F
-    "G"  # 0x47 -> LATIN CAPITAL LETTER G
-    "H"  # 0x48 -> LATIN CAPITAL LETTER H
-    "I"  # 0x49 -> LATIN CAPITAL LETTER I
-    "J"  # 0x4A -> LATIN CAPITAL LETTER J
-    "K"  # 0x4B -> LATIN CAPITAL LETTER K
-    "L"  # 0x4C -> LATIN CAPITAL LETTER L
-    "M"  # 0x4D -> LATIN CAPITAL LETTER M
-    "N"  # 0x4E -> LATIN CAPITAL LETTER N
-    "O"  # 0x4F -> LATIN CAPITAL LETTER O
-    "P"  # 0x50 -> LATIN CAPITAL LETTER P
-    "Q"  # 0x51 -> LATIN CAPITAL LETTER Q
-    "R"  # 0x52 -> LATIN CAPITAL LETTER R
-    "S"  # 0x53 -> LATIN CAPITAL LETTER S
-    "T"  # 0x54 -> LATIN CAPITAL LETTER T
-    "U"  # 0x55 -> LATIN CAPITAL LETTER U
-    "V"  # 0x56 -> LATIN CAPITAL LETTER V
-    "W"  # 0x57 -> LATIN CAPITAL LETTER W
-    "X"  # 0x58 -> LATIN CAPITAL LETTER X
-    "Y"  # 0x59 -> LATIN CAPITAL LETTER Y
-    "Z"  # 0x5A -> LATIN CAPITAL LETTER Z
-    "["  # 0x5B -> LEFT SQUARE BRACKET
-    "\ufffe"  # 0x5C -> *unmapped*
-    "]"  # 0x5D -> RIGHT SQUARE BRACKET
-    "\ufffe"  # 0x5E -> *unmapped*
-    "_"  # 0x5F -> LOW LINE
-    "\ufffe"  # 0x60 -> *unmapped*
-    "a"  # 0x61 -> LATIN SMALL LETTER A
-    "b"  # 0x62 -> LATIN SMALL LETTER B
-    "c"  # 0x63 -> LATIN SMALL LETTER C
-    "d"  # 0x64 -> LATIN SMALL LETTER D
-    "e"  # 0x65 -> LATIN SMALL LETTER E
-    "f"  # 0x66 -> LATIN SMALL LETTER F
-    "g"  # 0x67 -> LATIN SMALL LETTER G
-    "h"  # 0x68 -> LATIN SMALL LETTER H
-    "i"  # 0x69 -> LATIN SMALL LETTER I
-    "j"  # 0x6A -> LATIN SMALL LETTER J
-    "k"  # 0x6B -> LATIN SMALL LETTER K
-    "l"  # 0x6C -> LATIN SMALL LETTER L
-    "m"  # 0x6D -> LATIN SMALL LETTER M
-    "n"  # 0x6E -> LATIN SMALL LETTER N
-    "o"  # 0x6F -> LATIN SMALL LETTER O
-    "p"  # 0x70 -> LATIN SMALL LETTER P
-    "q"  # 0x71 -> LATIN SMALL LETTER Q
-    "r"  # 0x72 -> LATIN SMALL LETTER R
-    "s"  # 0x73 -> LATIN SMALL LETTER S
-    "t"  # 0x74 -> LATIN SMALL LETTER T
-    "u"  # 0x75 -> LATIN SMALL LETTER U
-    "v"  # 0x76 -> LATIN SMALL LETTER V
-    "w"  # 0x77 -> LATIN SMALL LETTER W
-    "x"  # 0x78 -> LATIN SMALL LETTER X
-    "y"  # 0x79 -> LATIN SMALL LETTER Y
-    "z"  # 0x7A -> LATIN SMALL LETTER Z
-    "\ufffe"  # 0x7B -> *unmapped*
-    "|"  # 0x7C -> VERTICAL LINE
-    "\ufffe"  # 0x7D -> *unmapped*
-    "\ufffe"  # 0x7E -> *unmapped*
-    "\x7f"  # 0x7F -> DELETE
-    "\x80"  # 0x80 -> PADDING CHARACTER
-    "\x81"  # 0x81 -> HIGH OCTET PRESET
-    "\x82"  # 0x82 -> BREAK PERMITTED HERE (BPH)
-    "\x83"  # 0x83 -> NO BREAK HERE (NBH)
-    "\x84"  # 0x84 -> INDEX (IND)
-    "\x85"  # 0x85 -> NEXT LINE (NEL)
-    "\x86"  # 0x86 -> START OF SELECTED AREA (SSA)
-    "\x87"  # 0x87 -> END OF SELECTED AREA (ESA)
-    "\x88"  # 0x88 -> CHARACTER TABULATION SET (HTS)
-    "\x89"  # 0x89 -> CHARACTER TABULATION WITH JUSTIFICATION (HTJ)
-    "\x8a"  # 0x8a -> LINE TABULATION SET (VTS)
-    "\x8b"  # 0x8b -> PARTIAL LINE FORWARD (PLD)
-    "\x8c"  # 0x8c -> PARTIAL LINE BACKWARD (PLU)
-    "\x8d"  # 0x8d -> REVERSE LINE FEED (RI)
-    "\x8e"  # 0x8e -> SINGLE-SHIFT TWO (SS2)
-    "\x8f"  # 0x8f -> SINGLE-SHIFT THREE (SS3)
-    "\x90"  # 0x90 -> DEVICE CONTROL STRING (DCS)
-    "\x91"  # 0x91 -> PRIVATE USE ONE (PU1)
-    "\x92"  # 0x92 -> PRIVATE USE TWO (PU2)
-    "\x93"  # 0x93 -> SET TRANSMIT STATE (STS)
-    "\x94"  # 0x94 -> CANCEL CHARACTER (CCH)
-    "\x95"  # 0x95 -> MESSAGE WAITING (MW)
-    "\x96"  # 0x96 -> START OF GUARDED AREA (SPA)
-    "\x97"  # 0x97 -> END OF GUARDED AREA (EPA)
-    "\x98"  # 0x98 -> START OF STRING (SOS)
-    "\x99"  # 0x99 -> SINGLE GRAPHIC CHARACTER INTRODUCER (SGCI)
-    "\x9a"  # 0x9a -> SINGLE CHARACTER INTRODUCER (SCI)
-    "\x9b"  # 0x9b -> CONTROL SEQUENCE INTRODUCER (CSI)
-    "\x9c"  # 0x9c -> STRING TERMINATOR (ST)
-    "\x9d"  # 0x9d -> OPERATING SYSTEM COMMAND (OSC)
-    "\x9e"  # 0x9e -> PRIVACY MESSAGE (PM)
-    "\x9f"  # 0x9f -> APPLICATION PROGRAM COMMAND (APC)
-    "\xa0"  # 0xA0 -> NO-BREAK SPACE
-    "\xa1"  # 0xA1 -> INVERTED EXCLAMATION MARK
-    "\xa2"  # 0xA2 -> CENT SIGN
-    "\xa3"  # 0xA3 -> POUND SIGN
-    "$"  # 0xA4 -> DOLLAR SIGN
-    "\xa5"  # 0xA5 -> YEN SIGN
-    "#"  # 0xA6 -> NUMBER SIGN
-    "\xa7"  # 0xA7 -> SECTION SIGN
-    "\xa4"  # 0xA8 -> CURRENCY SIGN
-    "\ufffe"  # 0xA9 -> *unmapped*
-    "\ufffe"  # 0xAA -> *unmapped*
-    "\xab"  # 0xAB -> LEFT-POINTING DOUBLE ANGLE QUOTATION MARK
-    "\ufffe"  # 0xAC -> *unmapped*
-    "\ufffe"  # 0xAD -> *unmapped*
-    "\ufffe"  # 0xAE -> *unmapped*
-    "\ufffe"  # 0xAF -> *unmapped*
-    "\xb0"  # 0xB0 -> DEGREE SIGN
-    "\xb1"  # 0xB1 -> PLUS-MINUS SIGN
-    "\xb2"  # 0xB2 -> SUPERSCRIPT TWO
-    "\xb3"  # 0xB3 -> SUPERSCRIPT THREE
-    "\xd7"  # 0xD7 -> MULTIPLICATION SIGN
-    "\xb5"  # 0xB5 -> MICRO SIGN
-    "\xb6"  # 0xB6 -> PILCROW SIGN
-    "\xb7"  # 0xB7 -> MIDDLE DOT
-    "\xf7"  # 0xF7 -> DIVISION SIGN
-    "\ufffe"  # 0xF8 -> *unmapped*
-    "\ufffe"  # 0xF9 -> *unmapped*
-    "\xbb"  # 0xBB -> RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK
-    "\xbc"  # 0xBC -> VULGAR FRACTION ONE QUARTER
-    "\xbd"  # 0xBD -> VULGAR FRACTION ONE HALF
-    "\xbe"  # 0xBE -> VULGAR FRACTION THREE QUARTERS
-    "\xbf"  # 0xBF -> INVERTED QUESTION MARK
-    "\ufffe"  # 0xC0 -> *unmapped*
-    "\u0300"  # 0xC1 -> COMBINING GRAVE ACCENT
-    "\u0301"  # 0xC2 -> COMBINING ACUTE ACCENT
-    "\u0302"  # 0xC3 -> COMBINING CIRCUMFLEX ACCENT
-    "\u0303"  # 0xC4 -> COMBINING TILDE
-    "\u0304"  # 0xC5 -> COMBINING MACRON
-    "\u0306"  # 0xC6 -> COMBINING BREVE
-    "\u0307"  # 0xC7 -> COMBINING DOT ABOVE
-    "\u0308"  # 0xC8 -> COMBINING DIAERESIS
-    "\ufffe"  # 0xC9 -> *unmapped*
-    "\u030a"  # 0xCA -> COMBINING RING ABOVE
-    "\u0327"  # 0xCB -> COMBINING CEDILLA
-    "\u0332"  # 0xCC -> COMBINING LOW LINE
-    "\u030b"  # 0xCD -> COMBINING DOUBLE ACUTE ACCENT
-    "\u032b"  # 0xCE -> COMBINING INVERTED DOUBLE ARCH BELOW
-    "\u030c"  # 0xCF -> COMBINING CARON
-    "\ufffe"  # 0xD0 -> *unmapped*
-    "\ufffe"  # 0xD1 -> *unmapped*
-    "\ufffe"  # 0xD2 -> *unmapped*
-    "\ufffe"  # 0xD3 -> *unmapped*
-    "\ufffe"  # 0xD4 -> *unmapped*
-    "\ufffe"  # 0xD5 -> *unmapped*
-    "\ufffe"  # 0xD6 -> *unmapped*
-    "\ufffe"  # 0xD7 -> *unmapped*
-    "\ufffe"  # 0xD8 -> *unmapped*
-    "\ufffe"  # 0xD9 -> *unmapped*
-    "\ufffe"  # 0xDA -> *unmapped*
-    "\ufffe"  # 0xDB -> *unmapped*
-    "\ufffe"  # 0xDC -> *unmapped*
-    "\ufffe"  # 0xDD -> *unmapped*
-    "\ufffe"  # 0xDE -> *unmapped*
-    "\ufffe"  # 0xDF -> *unmapped*
-    "\u2126"  # 0xE0 -> OHM SIGN
-    "\u00c6"  # 0xE1 -> LATIN CAPITAL LETTER AE
-    "\u00d0"  # 0xE2 -> LATIN CAPITAL LETTER ETH
-    "\u00aa"  # 0xE3 -> FEMININE ORDINAL INDICATOR
-    "\u0126"  # 0xE4 -> LATIN CAPITAL LETTER H WITH STROKE
-    "\ufffe"  # 0xE5 -> *unmapped*
-    "\u0132"  # 0xE6 -> LATIN CAPITAL LIGATURE IJ
-    "\u013f"  # 0xE7 -> LATIN CAPITAL LETTER L WITH MIDDLE DOT
-    "\u0141"  # 0xE8 -> LATIN CAPITAL LETTER L WITH STROKE
-    "\u00d8"  # 0xE9 -> LATIN CAPITAL LETTER O WITH STROKE
-    "\u0152"  # 0xEA -> LATIN CAPITAL LIGATURE OE
-    "\u00ba"  # 0xEB -> MASCULINE ORDINAL INDICATOR
-    "\u00de"  # 0xEC -> LATIN CAPITAL LETTER THORN
-    "\u0166"  # 0xED -> LATIN CAPITAL LETTER T WITH STROKE
-    "\u014a"  # 0xEE -> LATIN CAPITAL LETTER ENG
-    "\u0149"  # 0xEF -> LATIN SMALL LETTER N PRECEDED BY APOSTROPHE
-    "\u0138"  # 0xF0 -> LATIN SMALL LETTER KRA
-    "\u00e6"  # 0xF1 -> LATIN SMALL LETTER AE
-    "\u0111"  # 0xF2 -> LATIN SMALL LETTER D WITH STROKE
-    "\u00f0"  # 0xF3 -> LATIN SMALL LETTER ETH
-    "\u0127"  # 0xF4 -> LATIN SMALL LETTER H WITH STROKE
-    "\u0131"  # 0xF5 -> LATIN SMALL LETTER DOTLESS I
-    "\u0133"  # 0xF6 -> LATIN SMALL LIGATURE IJ
-    "\u0140"  # 0xF7 -> LATIN SMALL LETTER L WITH MIDDLE DOT
-    "\u0142"  # 0xF8 -> LATIN SMALL LETTER L WITH STROKE
-    "\u00f8"  # 0xF9 -> LATIN SMALL LETTER O WITH STROKE
-    "\u0153"  # 0xFA -> LATIN SMALL LIGATURE OE
-    "\u00df"  # 0xFB -> LATIN SMALL LETTER SHARP S
-    "\u00fe"  # 0xFC -> LATIN SMALL LETTER THORN
-    "\u0167"  # 0xFD -> LATIN SMALL LETTER T WITH STROKE
-    "\u014b"  # 0xFE -> LATIN SMALL LETTER ENG
-    "\ufffe"  # 0xFF -> *unmapped*
-)
-
-# Encoding table
-ENCODING_TABLE = codecs.charmap_build(DECODING_TABLE)  # type: ignore[attr-defined]
-
-
-def search_function(encoding: str) -> codecs.CodecInfo:
+def search_function(encoding: str) -> codecs.CodecInfo | None:
     """
-    A search function which can be used with :py:func:`codecs.register`.
+    Look up the codec; usable with :py:func:`codecs.register`.
+
+    Returns a CodecInfo for t61/t.61 encodings, or None for unknown
+    encodings to allow other search functions to handle them.
 
     As a convenience, there is also :func:`~.register` in this module.
     """
     if encoding.lower() in ("t61", "t.61"):
         return getregentry()
-    return codecs.lookup(encoding)  # type: ignore[return-value]
+    return None
 
 
 def register() -> None:
-    """
-    Convenience function which registers a new default Python search function
+    r"""
+    Register the T.61 search function with Python's codec registry.
 
     Example:
 
     >>> import t61codec
     >>> t61codec.register()
-    >>> b'Hello T.61: \\xe0'.decode('t.61')
-    'Hello T.61: Ω'
+    >>> b'Hello T.61: \xe0 Caf\xc2e'.decode('t.61')
+    'Hello T.61: Ω Café'
     """
     codecs.register(search_function)
