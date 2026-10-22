@@ -75,8 +75,10 @@ raised when cutting a release; a CI warning signals when it is due. Update the
    classifiers and `requires-python` if needed.
 2. Merge to `master`.
 3. Tag the release as `vX.Y.Z` and push the tag.
-4. CI publishes to PyPI through Trusted Publishing (the job fails if the tag
-   does not match the package version).
+4. CI builds and inspects the packages (`hynek/build-and-inspect-python-package`,
+   which also runs on every PR) and publishes that exact build to PyPI through
+   Trusted Publishing (the job fails if the tag does not match the package
+   version).
 
 ### One-time setup
 
