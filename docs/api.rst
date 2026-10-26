@@ -1,4 +1,4 @@
-API Reference
+API reference
 =============
 
 .. automodule:: t61codec
