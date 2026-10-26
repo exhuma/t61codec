@@ -1,36 +1,9 @@
 Usage
 =====
 
-Installation
-------------
-
-.. code-block:: console
-
-   $ pip install t61codec
-
-Quick start
------------
-
-Register the codec once at application startup, then use it like any other
-Python encoding:
-
-.. code-block:: python
-
-   import t61codec
-
-   t61codec.register()
-
-   # Decode T.61 bytes to a Python string
-   text = b"Hello T.61: \xe0 Caf\xc2e".decode("t.61")
-   print(text)
-   # Hello T.61: Ω Café
-
-   # Encode a Python string to T.61 bytes
-   raw = "Hello T.61: Ω Café".encode("t.61")
-   print(raw)
-   # b'Hello T.61: \xe0 Caf\xc2e'
-
-The codec can be referenced by either ``"t61"`` or ``"t.61"``.
+Register the codec once with :func:`t61codec.register`, as shown on the
+:doc:`start page <index>`. The codec is then available as ``"t61"`` and
+``"t.61"``.
 
 What the codec accepts
 ----------------------
@@ -104,7 +77,7 @@ precomposed text.
 Low-level API
 -------------
 
-You can also use the codec classes directly without registering:
+Use the codec classes directly without registering:
 
 .. code-block:: python
 
