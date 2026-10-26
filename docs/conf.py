@@ -12,12 +12,20 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.viewcode",
-    "sphinx_copybutton",
+    "michel_albert_sphinx",
 ]
 
-templates_path = ["_templates"]
 exclude_patterns = ["_build"]
 
 html_baseurl = "https://exhuma.github.io/t61codec/"
-html_theme = "furo"
 html_static_path = ["_static"]
+html_theme_options = {
+    "repo_url": "https://github.com/exhuma/t61codec",
+    "repo_name": "exhuma/t61codec",
+    "edit_uri": "blob/master/docs",
+    "features": [
+        "content.code.copy",
+        "navigation.top",
+        "toc.follow",
+    ],
+}
