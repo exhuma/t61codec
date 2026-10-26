@@ -18,6 +18,7 @@ extensions = [
 exclude_patterns = ["_build"]
 
 html_baseurl = "https://exhuma.github.io/t61codec/"
+html_title = "t61codec"
 html_static_path = ["_static"]
 html_theme_options = {
     "repo_url": "https://github.com/exhuma/t61codec",
